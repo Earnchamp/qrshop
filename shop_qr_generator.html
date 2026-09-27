@@ -1,0 +1,1255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shop QR Generator</title>
+
+  <!-- Excel reader + ZIP creator -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --text:#172033;
+      --muted:#667085;
+      --border:#dbe2ea;
+      --primary:#175cd3;
+      --primary-dark:#1246a3;
+      --danger:#d92d20;
+      --success:#039855;
+      --shadow:0 18px 50px rgba(16,24,40,.10);
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:linear-gradient(135deg,#eef4ff 0%,var(--bg) 48%,#eefbf6 100%);
+      color:var(--text);
+      padding:28px 16px;
+    }
+
+    .app{
+      width:min(1100px,100%);
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:minmax(0,430px) minmax(0,1fr);
+      gap:24px;
+      align-items:stretch;
+    }
+
+    .card{
+      background:rgba(255,255,255,.97);
+      border:1px solid rgba(255,255,255,.85);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .panel{padding:30px}
+
+    .brand{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      margin-bottom:8px;
+    }
+
+    .brand-icon{
+      width:48px;
+      height:48px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      background:#e8f1ff;
+      color:var(--primary);
+      font-size:23px;
+      font-weight:800;
+    }
+
+    h1{
+      margin:0;
+      font-size:28px;
+      letter-spacing:-.03em;
+    }
+
+    .subtitle{
+      margin:8px 0 24px;
+      color:var(--muted);
+      line-height:1.55;
+      font-size:14px;
+    }
+
+    .mode-tabs{
+      display:flex;
+      gap:6px;
+      padding:4px;
+      margin-bottom:22px;
+      border-radius:13px;
+      background:#f2f4f7;
+    }
+
+    .mode-tab{
+      flex:1;
+      border:0;
+      background:transparent;
+      color:var(--muted);
+      border-radius:10px;
+      min-height:40px;
+      font-size:13px;
+      font-weight:750;
+      cursor:pointer;
+    }
+
+    .mode-tab.active{
+      background:#fff;
+      color:var(--text);
+      box-shadow:0 2px 8px rgba(16,24,40,.08);
+    }
+
+    .field{margin-bottom:18px}
+
+    label{
+      display:block;
+      margin-bottom:8px;
+      font-size:13px;
+      font-weight:750;
+    }
+
+    input{
+      width:100%;
+      height:50px;
+      border:1px solid var(--border);
+      border-radius:13px;
+      padding:0 14px;
+      font-size:15px;
+      outline:none;
+      color:var(--text);
+      background:#fff;
+      transition:.15s ease;
+    }
+
+    input:focus{
+      border-color:#84adff;
+      box-shadow:0 0 0 4px rgba(23,92,211,.10);
+    }
+
+    .hint{
+      margin-top:7px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+
+    button{
+      min-height:46px;
+      border:0;
+      border-radius:12px;
+      padding:0 18px;
+      font-size:14px;
+      font-weight:750;
+      cursor:pointer;
+      transition:transform .12s ease,opacity .12s ease,background .12s ease;
+    }
+
+    button:hover{transform:translateY(-1px)}
+    button:active{transform:translateY(0)}
+    button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+    .primary{
+      flex:1;
+      min-width:180px;
+      background:var(--primary);
+      color:#fff;
+    }
+
+    .primary:hover{background:var(--primary-dark)}
+
+    .secondary{
+      background:#edf2f7;
+      color:#344054;
+    }
+
+    .small-btn{
+      min-height:34px;
+      padding:0 11px;
+      font-size:12px;
+    }
+
+    .error{
+      display:none;
+      margin-top:14px;
+      padding:10px 12px;
+      border-radius:11px;
+      color:var(--danger);
+      background:#fff0ef;
+      border:1px solid #ffd0cc;
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    .footer-note{
+      margin:16px 0 0;
+      color:#98a2b3;
+      font-size:12px;
+      line-height:1.5;
+      text-align:center;
+    }
+
+    .upload-box{
+      border:1.5px dashed #b9c4d1;
+      background:#f9fbfd;
+      border-radius:16px;
+      padding:24px 18px;
+      text-align:center;
+      cursor:pointer;
+      transition:.15s ease;
+    }
+
+    .upload-box:hover,.upload-box.dragover{
+      border-color:#84adff;
+      background:#f4f8ff;
+    }
+
+    .upload-icon{
+      width:46px;
+      height:46px;
+      margin:0 auto 9px;
+      border-radius:13px;
+      display:grid;
+      place-items:center;
+      background:#e8f1ff;
+      color:var(--primary);
+      font-size:22px;
+      font-weight:900;
+    }
+
+    .upload-title{
+      font-size:15px;
+      font-weight:800;
+    }
+
+    .upload-subtitle{
+      margin:4px 0 13px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .file-info{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:12px;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+      font-size:12px;
+    }
+
+    .file-info strong{
+      display:block;
+      max-width:250px;
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+
+    .file-info span{
+      margin-left:6px;
+      color:var(--muted);
+    }
+
+    .excel-requirement{
+      margin-top:12px;
+      padding:11px 12px;
+      border:1px solid #eaecf0;
+      border-radius:12px;
+      background:#f8fafc;
+      color:#475467;
+      font-size:12px;
+      line-height:1.55;
+    }
+
+    .excel-requirement code{
+      padding:2px 5px;
+      border-radius:5px;
+      background:#eef2f6;
+      color:#344054;
+    }
+
+    .bulk-progress{
+      display:none;
+      margin-top:14px;
+    }
+
+    .progress-bar{
+      height:8px;
+      overflow:hidden;
+      border-radius:999px;
+      background:#edf2f7;
+    }
+
+    .progress-bar span{
+      display:block;
+      width:0%;
+      height:100%;
+      border-radius:inherit;
+      background:var(--primary);
+      transition:width .15s ease;
+    }
+
+    .progress-text{
+      margin-top:7px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .bulk-list{
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+      max-height:340px;
+      overflow:auto;
+      margin-top:14px;
+    }
+
+    .bulk-row{
+      display:grid;
+      grid-template-columns:28px minmax(0,1fr) auto auto;
+      gap:9px;
+      align-items:center;
+      padding:8px 9px;
+      border:1px solid #eaecf0;
+      border-radius:11px;
+      background:#fff;
+    }
+
+    .bulk-index{
+      width:26px;
+      height:26px;
+      display:grid;
+      place-items:center;
+      border-radius:7px;
+      background:#f2f4f7;
+      color:#667085;
+      font-size:11px;
+      font-weight:800;
+    }
+
+    .bulk-details{min-width:0}
+
+    .bulk-details strong,
+    .bulk-details span{
+      display:block;
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+
+    .bulk-details strong{font-size:12px}
+    .bulk-details span{
+      margin-top:2px;
+      color:#98a2b3;
+      font-size:10px;
+    }
+
+    .bulk-state{
+      color:#667085;
+      font-size:10px;
+      white-space:nowrap;
+    }
+
+    .preview-wrap{
+      min-height:610px;
+      padding:28px;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .preview-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .preview-title h2{
+      margin:0;
+      font-size:17px;
+    }
+
+    .status{
+      padding:6px 10px;
+      border-radius:999px;
+      background:#f2f4f7;
+      color:#667085;
+      font-size:12px;
+      font-weight:750;
+    }
+
+    .stage{
+      flex:1;
+      min-height:510px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      border:1px dashed #cfd7e2;
+      border-radius:18px;
+      background:#f9fbfd;
+    }
+
+    .output-card{
+      width:min(100%,430px);
+      padding:24px 24px 28px;
+      border:1px solid #edf0f4;
+      border-radius:20px;
+      background:#fff;
+      box-shadow:0 14px 36px rgba(16,24,40,.09);
+      text-align:center;
+    }
+
+    .shop-name{
+      margin-bottom:20px;
+      color:var(--text);
+      font-size:clamp(22px,4vw,30px);
+      font-weight:800;
+      letter-spacing:-.035em;
+      word-break:break-word;
+    }
+
+    #qr{
+      min-height:300px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    #qr img{
+      display:block;
+      width:300px;
+      height:300px;
+      max-width:100%;
+      image-rendering:pixelated;
+      border-radius:6px;
+    }
+
+    .qr-data{
+      margin-top:17px;
+      color:#667085;
+      font-size:12px;
+      line-height:1.45;
+      word-break:break-all;
+    }
+
+    .bulk-preview-info{
+      min-height:510px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:35px;
+      border:1px dashed #cfd7e2;
+      border-radius:18px;
+      background:#f9fbfd;
+      text-align:center;
+    }
+
+    .bulk-preview-icon{
+      width:58px;
+      height:58px;
+      margin-bottom:14px;
+      display:grid;
+      place-items:center;
+      border-radius:16px;
+      background:#eafaf2;
+      color:var(--success);
+      font-size:24px;
+      font-weight:900;
+    }
+
+    .bulk-preview-info h3{
+      margin:0;
+      font-size:20px;
+    }
+
+    .bulk-preview-info p{
+      max-width:390px;
+      margin:8px 0 0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    @media(max-width:850px){
+      .app{grid-template-columns:1fr}
+      .preview-wrap{min-height:auto}
+      .stage,.bulk-preview-info{min-height:430px}
+    }
+
+    @media(max-width:520px){
+      body{padding:14px 10px}
+      .panel,.preview-wrap{padding:20px}
+      .bulk-row{grid-template-columns:28px minmax(0,1fr) auto}
+      .bulk-state{display:none}
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="card panel">
+      <div class="brand">
+        <div class="brand-icon">⌁</div>
+        <div><h1>Shop QR Generator</h1></div>
+      </div>
+
+      <p class="subtitle">
+        Create one QR manually or upload an Excel sheet to generate QR images for many outlets.
+      </p>
+
+      <div class="mode-tabs">
+        <button id="singleTab" class="mode-tab active" type="button">Single QR</button>
+        <button id="excelTab" class="mode-tab" type="button">Excel Bulk</button>
+      </div>
+
+      <div id="singleMode">
+        <div class="field">
+          <label for="qrData">QR Code Data / Number</label>
+          <input id="qrData" type="text" inputmode="numeric" autocomplete="off"
+                 placeholder="e.g. 9876543210" maxlength="500">
+          <div class="hint">This exact value is sent to the QRServer API.</div>
+        </div>
+
+        <div class="field">
+          <label for="shopName">Shop / Outlet Name</label>
+          <input id="shopName" type="text" autocomplete="organization"
+                 placeholder="e.g. Mahesh Store" maxlength="100">
+        </div>
+
+        <div class="actions">
+          <button id="generateBtn" class="primary" type="button">Generate QR</button>
+          <button id="clearBtn" class="secondary" type="button">Clear</button>
+        </div>
+      </div>
+
+      <div id="excelMode" style="display:none">
+        <div class="upload-box" id="uploadBox">
+          <div class="upload-icon">↑</div>
+          <div class="upload-title">Upload Excel file</div>
+          <div class="upload-subtitle">.xlsx or .xls</div>
+          <button id="uploadBtn" class="secondary small-btn" type="button">Choose Excel File</button>
+          <input id="excelInput" type="file" accept=".xlsx,.xls" hidden>
+        </div>
+
+        <div id="fileInfo" class="file-info" style="display:none">
+          <div>
+            <strong id="fileName">Excel file</strong>
+            <span id="rowCount"></span>
+          </div>
+          <button id="removeFileBtn" class="secondary small-btn" type="button">Remove</button>
+        </div>
+
+        <div class="excel-requirement">
+          <strong>Required columns:</strong>
+          <code>Outletname</code> and <code>Master QRCode</code>.<br>
+          The first worksheet is used. Each valid row creates one separate PNG.
+        </div>
+
+        <div class="actions">
+          <button id="generateAllBtn" class="primary" type="button" disabled>Generate All QR Codes</button>
+          <button id="downloadZipBtn" class="secondary" type="button" disabled>Download All ZIP</button>
+        </div>
+
+        <div id="bulkProgress" class="bulk-progress">
+          <div class="progress-bar"><span id="progressFill"></span></div>
+          <div id="progressText" class="progress-text">Preparing...</div>
+        </div>
+
+        <div id="bulkList" class="bulk-list"></div>
+      </div>
+
+      <div id="errorBox" class="error"></div>
+
+      <p class="footer-note">
+        QR codes are generated with the QRServer API endpoint you provided.
+      </p>
+    </section>
+
+    <section class="card preview-wrap">
+      <div class="preview-title">
+        <h2 id="previewHeading">Output Preview</h2>
+        <span id="status" class="status">Ready</span>
+      </div>
+
+      <div id="singlePreviewStage" class="stage">
+        <div class="output-card">
+          <div id="previewShop" class="shop-name">Your Shop Name</div>
+          <div id="qr"></div>
+          <div id="previewData" class="qr-data">Enter data and generate the QR code.</div>
+        </div>
+      </div>
+
+      <div id="bulkPreviewInfo" class="bulk-preview-info" style="display:none">
+        <div class="bulk-preview-icon">✓</div>
+        <h3>Excel QR Generation</h3>
+        <p>
+          Upload your Excel sheet, then click Generate All QR Codes.
+          Each row is processed using its Outletname and Master QRCode values.
+        </p>
+      </div>
+
+      <div id="singleDownloadActions" class="actions" style="margin-top:16px">
+        <button id="downloadBtn" class="primary" type="button" disabled>Download as PNG</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const QR_API_BASE = "https://api.qrserver.com/v1/create-qr-code/";
+
+    const $ = (id) => document.getElementById(id);
+
+    const singleTab = $("singleTab");
+    const excelTab = $("excelTab");
+    const singleMode = $("singleMode");
+    const excelMode = $("excelMode");
+
+    const qrDataInput = $("qrData");
+    const shopNameInput = $("shopName");
+    const generateBtn = $("generateBtn");
+    const clearBtn = $("clearBtn");
+    const downloadBtn = $("downloadBtn");
+
+    const qr = $("qr");
+    const previewShop = $("previewShop");
+    const previewData = $("previewData");
+    const status = $("status");
+    const errorBox = $("errorBox");
+
+    const singlePreviewStage = $("singlePreviewStage");
+    const bulkPreviewInfo = $("bulkPreviewInfo");
+    const singleDownloadActions = $("singleDownloadActions");
+    const previewHeading = $("previewHeading");
+
+    const uploadBox = $("uploadBox");
+    const uploadBtn = $("uploadBtn");
+    const excelInput = $("excelInput");
+    const fileInfo = $("fileInfo");
+    const fileName = $("fileName");
+    const rowCount = $("rowCount");
+    const removeFileBtn = $("removeFileBtn");
+    const generateAllBtn = $("generateAllBtn");
+    const downloadZipBtn = $("downloadZipBtn");
+    const bulkProgress = $("bulkProgress");
+    const progressFill = $("progressFill");
+    const progressText = $("progressText");
+    const bulkList = $("bulkList");
+
+    let singleGenerated = false;
+    let excelRows = [];
+    let generatedBulk = [];
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.style.display = "block";
+    }
+
+    function clearError() {
+      errorBox.textContent = "";
+      errorBox.style.display = "none";
+    }
+
+    function setMode(mode) {
+      clearError();
+      const single = mode === "single";
+
+      singleTab.classList.toggle("active", single);
+      excelTab.classList.toggle("active", !single);
+
+      singleMode.style.display = single ? "block" : "none";
+      excelMode.style.display = single ? "none" : "block";
+
+      singlePreviewStage.style.display = single ? "flex" : "none";
+      singleDownloadActions.style.display = single ? "flex" : "none";
+      bulkPreviewInfo.style.display = single ? "none" : "flex";
+
+      previewHeading.textContent = single ? "Output Preview" : "Bulk QR Generation";
+      status.textContent = single
+        ? (singleGenerated ? "Generated" : "Ready")
+        : (generatedBulk.length ? generatedBulk.length + " Generated" : "Ready");
+    }
+
+    function apiUrl(data) {
+      return QR_API_BASE +
+        "?data=" + encodeURIComponent(String(data)) +
+        "&size=300x300";
+    }
+
+    function loadQrImage(data) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.width = 300;
+        img.height = 300;
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("QRServer image could not be loaded."));
+        img.src = apiUrl(data);
+      });
+    }
+
+    async function qrImageToCanvas(data) {
+      const img = await loadQrImage(data);
+
+      // Fetch the API response and turn it into a same-origin blob image.
+      // This lets the combined PNG be exported by canvas in browsers that allow CORS.
+      const response = await fetch(apiUrl(data), {
+        mode: "cors",
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error("QRServer request failed.");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      try {
+        const localImg = await new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = objectUrl;
+        });
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 300;
+        canvas.height = 300;
+
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(localImg, 0, 0, 300, 300);
+
+        return canvas;
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+
+    function safeFilename(value, fallback) {
+      return String(value || fallback)
+        .replace(/[<>:"/\\\\|?*]+/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 80) || fallback;
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
+    function splitLongText(ctx, text, maxWidth, maxLines = 2) {
+      const result = [];
+      let line = "";
+
+      for (const char of String(text)) {
+        const test = line + char;
+
+        if (ctx.measureText(test).width <= maxWidth) {
+          line = test;
+        } else {
+          if (line) result.push(line);
+          line = char;
+          if (result.length >= maxLines) break;
+        }
+      }
+
+      if (line && result.length < maxLines) result.push(line);
+      return result;
+    }
+
+    async function buildCombinedPng(outletName, data) {
+      const qrCanvas = await qrImageToCanvas(data);
+
+      const scale = 2;
+      const padding = 55;
+      const headerHeight = 90;
+      const footerHeight = 78;
+      const qrSize = 300;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = (qrSize + padding * 2) * scale;
+      canvas.height = (headerHeight + qrSize + footerHeight + padding) * scale;
+
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      ctx.fillStyle = "#172033";
+      ctx.font = `800 ${30 * scale}px Inter, Arial, sans-serif`;
+
+      let title = String(outletName || "Shop").trim();
+      while (
+        title.length > 45 &&
+        ctx.measureText(title).width > canvas.width - 40 * scale
+      ) {
+        title = title.slice(0, -1);
+      }
+      if (title !== String(outletName || "Shop").trim()) title += "…";
+
+      ctx.fillText(title, canvas.width / 2, 38 * scale);
+
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        qrCanvas,
+        padding * scale,
+        headerHeight * scale,
+        qrSize * scale,
+        qrSize * scale
+      );
+
+      ctx.fillStyle = "#667085";
+      ctx.font = `500 ${12 * scale}px Inter, Arial, sans-serif`;
+
+      const lines = splitLongText(
+        ctx,
+        String(data),
+        canvas.width - padding * 2 * scale,
+        2
+      );
+
+      const footerY = (headerHeight + qrSize + 32) * scale;
+
+      lines.forEach((line, index) => {
+        ctx.fillText(line, canvas.width / 2, footerY + index * 20 * scale);
+      });
+
+      return await new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Could not create PNG."));
+        }, "image/png");
+      });
+    }
+
+    async function generateSingle() {
+      clearError();
+
+      const data = qrDataInput.value.trim();
+      const shop = shopNameInput.value.trim();
+
+      if (!data) {
+        showError("Please enter the QR code data.");
+        qrDataInput.focus();
+        return;
+      }
+
+      if (!shop) {
+        showError("Please enter the shop name.");
+        shopNameInput.focus();
+        return;
+      }
+
+      qr.innerHTML = "";
+
+      const img = document.createElement("img");
+      img.alt = "Generated QR Code";
+      img.src = apiUrl(data);
+
+      img.onload = () => {
+        qr.appendChild(img);
+        previewShop.textContent = shop;
+        previewData.textContent = data;
+        status.textContent = "Generated";
+        singleGenerated = true;
+        downloadBtn.disabled = false;
+      };
+
+      img.onerror = () => {
+        qr.innerHTML = "";
+        singleGenerated = false;
+        downloadBtn.disabled = true;
+        status.textContent = "Error";
+        showError("QRServer could not generate/load the QR code. Please check your internet connection.");
+      };
+
+      qr.appendChild(img);
+    }
+
+    async function downloadSingle() {
+      clearError();
+
+      if (!singleGenerated) {
+        showError("Please generate the QR code first.");
+        return;
+      }
+
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = "Preparing...";
+
+      try {
+        const blob = await buildCombinedPng(
+          shopNameInput.value.trim(),
+          qrDataInput.value.trim()
+        );
+
+        downloadBlob(
+          blob,
+          safeFilename(shopNameInput.value, "shop-qr") + "-qr.png"
+        );
+
+        status.textContent = "Downloaded";
+      } catch (error) {
+        showError(
+          "The QR was displayed, but the browser could not create the combined PNG. " +
+          "This can happen when the QRServer image is blocked by browser CORS rules."
+        );
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = "Download as PNG";
+      }
+    }
+
+    function clearSingle() {
+      qrDataInput.value = "";
+      shopNameInput.value = "";
+      qr.innerHTML = "";
+      previewShop.textContent = "Your Shop Name";
+      previewData.textContent = "Enter data and generate the QR code.";
+      singleGenerated = false;
+      downloadBtn.disabled = true;
+      status.textContent = "Ready";
+      clearError();
+      qrDataInput.focus();
+    }
+
+    function normalizeHeader(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[\s_-]+/g, "")
+        .trim();
+    }
+
+    function findColumn(headers, requiredName) {
+      const wanted = normalizeHeader(requiredName);
+      return headers.find((header) => normalizeHeader(header) === wanted) || null;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderBulkRows() {
+      bulkList.innerHTML = excelRows.map((row, index) => `
+        <div class="bulk-row">
+          <span class="bulk-index">${index + 1}</span>
+          <div class="bulk-details">
+            <strong>${escapeHtml(row.outlet)}</strong>
+            <span>${escapeHtml(row.data)}</span>
+          </div>
+          <span class="bulk-state" id="state-${index}">Ready</span>
+          <button id="download-${index}" class="secondary small-btn" type="button" disabled>Download</button>
+        </div>
+      `).join("");
+    }
+
+    function resetBulk() {
+      excelRows = [];
+      generatedBulk = [];
+      excelInput.value = "";
+      fileInfo.style.display = "none";
+      bulkList.innerHTML = "";
+      generateAllBtn.disabled = true;
+      downloadZipBtn.disabled = true;
+      bulkProgress.style.display = "none";
+      progressFill.style.width = "0%";
+      progressText.textContent = "Preparing...";
+      rowCount.textContent = "";
+      status.textContent = "Ready";
+      clearError();
+    }
+
+    async function handleExcelFile(file) {
+      clearError();
+
+      if (!file) return;
+
+      const ext = file.name.toLowerCase().split(".").pop();
+
+      if (!["xlsx", "xls"].includes(ext)) {
+        showError("Please upload an .xlsx or .xls Excel file.");
+        return;
+      }
+
+      try {
+        const buffer = await file.arrayBuffer();
+
+        if (typeof XLSX === "undefined") {
+          throw new Error("The Excel library did not load. Check your internet connection and reload the page.");
+        }
+
+        const workbook = XLSX.read(buffer, {
+          type: "array",
+          raw: false
+        });
+
+        if (!workbook.SheetNames.length) {
+          throw new Error("The workbook contains no worksheets.");
+        }
+
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, {
+          defval: "",
+          raw: false
+        });
+
+        if (!rows.length) {
+          throw new Error("The first worksheet is empty.");
+        }
+
+        const headers = Object.keys(rows[0]);
+        const outletColumn = findColumn(headers, "Outletname");
+        const qrColumn = findColumn(headers, "Master QRCode");
+
+        if (!outletColumn || !qrColumn) {
+          throw new Error(
+            'Required columns not found. Use exactly "Outletname" and "Master QRCode" as your column headers.'
+          );
+        }
+
+        excelRows = rows
+          .map((row, index) => ({
+            excelRow: index + 2,
+            outlet: String(row[outletColumn] ?? "").trim(),
+            data: String(row[qrColumn] ?? "").trim()
+          }))
+          .filter((row) => row.outlet || row.data);
+
+        if (!excelRows.length) {
+          throw new Error("No data rows were found.");
+        }
+
+        generatedBulk = [];
+
+        fileName.textContent = file.name;
+        rowCount.textContent =
+          `${excelRows.length} row${excelRows.length === 1 ? "" : "s"}`;
+        fileInfo.style.display = "flex";
+
+        generateAllBtn.disabled = false;
+        downloadZipBtn.disabled = true;
+
+        renderBulkRows();
+        status.textContent = `${excelRows.length} Rows Loaded`;
+
+        const incomplete = excelRows.filter((r) => !r.outlet || !r.data).length;
+
+        if (incomplete) {
+          showError(
+            `${incomplete} row(s) are missing Outletname or Master QRCode and will be skipped.`
+          );
+        }
+      } catch (error) {
+        resetBulk();
+        showError(error.message || "Could not read the Excel file.");
+      }
+    }
+
+    function updateProgress(done, total) {
+      const percent = total ? Math.round((done / total) * 100) : 0;
+      progressFill.style.width = `${percent}%`;
+      progressText.textContent = `${done} / ${total} processed`;
+    }
+
+    async function generateAllBulk() {
+      clearError();
+
+      if (!excelRows.length) {
+        showError("Please upload an Excel file first.");
+        return;
+      }
+
+      generatedBulk = [];
+
+      bulkProgress.style.display = "block";
+      progressFill.style.width = "0%";
+      progressText.textContent = "Generating QR codes...";
+
+      generateAllBtn.disabled = true;
+      downloadZipBtn.disabled = true;
+
+      let done = 0;
+
+      for (let index = 0; index < excelRows.length; index++) {
+        const row = excelRows[index];
+        const state = $(`state-${index}`);
+        const rowDownload = $(`download-${index}`);
+
+        if (!row.outlet || !row.data) {
+          state.textContent = "Skipped";
+          done++;
+          updateProgress(done, excelRows.length);
+          continue;
+        }
+
+        state.textContent = "Generating...";
+
+        try {
+          const blob = await buildCombinedPng(row.outlet, row.data);
+          const filename =
+            safeFilename(row.outlet, `outlet-${index + 1}`) + "-qr.png";
+
+          generatedBulk.push({
+            outlet: row.outlet,
+            data: row.data,
+            blob,
+            filename
+          });
+
+          state.textContent = "Done";
+          rowDownload.disabled = false;
+
+          rowDownload.onclick = () => {
+            downloadBlob(blob, filename);
+          };
+        } catch (error) {
+          state.textContent = "Failed";
+        }
+
+        done++;
+        updateProgress(done, excelRows.length);
+      }
+
+      progressText.textContent =
+        `${generatedBulk.length} of ${excelRows.length} QR codes generated`;
+
+      generateAllBtn.disabled = false;
+      downloadZipBtn.disabled = generatedBulk.length === 0;
+
+      status.textContent = `${generatedBulk.length} Generated`;
+    }
+
+    async function downloadAllZip() {
+      clearError();
+
+      if (!generatedBulk.length) {
+        showError("Generate the QR codes first.");
+        return;
+      }
+
+      if (typeof JSZip === "undefined") {
+        showError("The ZIP library did not load. Check your internet connection and reload the page.");
+        return;
+      }
+
+      downloadZipBtn.disabled = true;
+      downloadZipBtn.textContent = "Creating ZIP...";
+
+      try {
+        const zip = new JSZip();
+
+        generatedBulk.forEach((item) => {
+          zip.file(item.filename, item.blob);
+        });
+
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+
+        downloadBlob(zipBlob, "shop-qr-codes.zip");
+        status.textContent = "ZIP Downloaded";
+      } catch (error) {
+        showError("Could not create the ZIP file. Please try again.");
+      } finally {
+        downloadZipBtn.disabled = false;
+        downloadZipBtn.textContent = "Download All ZIP";
+      }
+    }
+
+    singleTab.addEventListener("click", () => setMode("single"));
+    excelTab.addEventListener("click", () => setMode("excel"));
+
+    generateBtn.addEventListener("click", generateSingle);
+    clearBtn.addEventListener("click", clearSingle);
+    downloadBtn.addEventListener("click", downloadSingle);
+
+    [qrDataInput, shopNameInput].forEach((input) => {
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") generateSingle();
+      });
+      input.addEventListener("input", clearError);
+    });
+
+    uploadBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      excelInput.click();
+    });
+
+    uploadBox.addEventListener("click", (event) => {
+      if (event.target === uploadBox ||
+          event.target.closest(".upload-icon,.upload-title,.upload-subtitle")) {
+        excelInput.click();
+      }
+    });
+
+    excelInput.addEventListener("change", (event) => {
+      handleExcelFile(event.target.files[0]);
+    });
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      uploadBox.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        uploadBox.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach((eventName) => {
+      uploadBox.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        uploadBox.classList.remove("dragover");
+      });
+    });
+
+    uploadBox.addEventListener("drop", (event) => {
+      handleExcelFile(event.dataTransfer.files[0]);
+    });
+
+    removeFileBtn.addEventListener("click", resetBulk);
+    generateAllBtn.addEventListener("click", generateAllBulk);
+    downloadZipBtn.addEventListener("click", downloadAllZip);
+
+    setMode("single");
+  </script>
+</body>
+</html>
